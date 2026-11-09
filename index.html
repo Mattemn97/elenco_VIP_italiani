@@ -3,100 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elenco regionale VIP italiani con classifica</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <title>VIP italiani per territorio · Matteo Filippini</title>
+    <meta name="description" content="Classifica dei personaggi famosi nati in ogni regione e provincia italiana, calcolata in tempo reale da Wikidata e Wikipedia.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='78' font-size='80' text-anchor='middle'>🏆</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/mf-theme.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/mf-theme.js"></script>
 </head>
-<body class="w3-light-grey">
+<body>
 
     <div id="boot-screen">
-        <div class="boot-spinner"></div>
-        <h2 class="w3-text-blue w3-margin-top">Inizializzazione Sistema...</h2>
-        <p>Sincronizzazione di tutte le Regioni e Province in corso.</p>
+        <span class="mf-spinner lg"></span>
+        <h2>Sincronizzazione con Wikidata…</h2>
+        <p class="muted">Carico l'elenco di tutte le regioni e province italiane.</p>
     </div>
 
-    <div class="w3-container w3-padding-bottom">
-
-        <header class="w3-container w3-blue w3-padding-16 w3-margin-top">
-            <h1>Elenco regionale VIP italiani con classifica 🌍</h1>
-            <p class="w3-margin-0">Analisi Territoriale Automatica (Database 100% Sincronizzato con Wikidata)</p>
-        </header>
-
-        <div class="w3-bar w3-black w3-margin-top nav-bar" id="main-tabs">
-            <button class="w3-bar-item w3-button tab-link tab-provincia" id="btn-tab-provincia" onclick="openProvinciaView(event)" style="display:none;">📍 Ricerca per Provincia</button>
+    <header class="mf-topbar">
+        <a class="mf-home" href="https://mattemn97.github.io/" title="Torna al sito di Matteo Filippini"><span class="mf-mark">MF</span><span class="mf-home-name">Matteo Filippini</span></a>
+        <span class="mf-sep">/</span>
+        <h1 class="mf-app-title">VIP italiani per territorio</h1>
+        <div class="mf-topbar-actions">
+            <a class="mf-icon-btn" href="https://github.com/Mattemn97/elenco_VIP_italiani" target="_blank" rel="noopener" aria-label="Codice su GitHub"><i class="fa-brands fa-github"></i></a>
+            <button class="mf-icon-btn" id="mfTheme" type="button" aria-label="Cambia tema"><i class="fa-solid fa-circle-half-stroke"></i></button>
         </div>
+    </header>
 
-        <div id="barra-provincia" class="w3-container w3-white w3-padding-16 w3-border-bottom" style="display: none;">
-            <label><b>Seleziona una Provincia / Città Metropolitana (<span id="count-province">...</span> caricate):</b></label>
-            <div class="w3-row w3-margin-top">
-                <div class="w3-col s8 m6 l4">
-                    <select id="select-provincia" class="w3-select w3-border">
-                        <option value="" disabled selected>Scegli dalla lista...</option>
+    <main class="mf-main">
+        <section class="mf-hero">
+            <p class="mf-eyebrow">// chi è il più famoso di casa tua?</p>
+            <h1>VIP italiani per territorio</h1>
+            <p>Scegli una regione o una provincia: incrocio in tempo reale le persone nate lì su <strong>Wikidata</strong> con le statistiche di <strong>Wikipedia</strong> e stilo tre classifiche.</p>
+        </section>
+
+        <section class="mf-card picker">
+            <div class="picker-head">
+                <h2><i class="fa-solid fa-map"></i> Regioni</h2>
+                <div class="mf-chips mode" role="tablist">
+                    <button class="mf-chip active" id="btn-mode-regione" type="button" onclick="openRegioneView()"><i class="fa-solid fa-map"></i> Regione</button>
+                    <button class="mf-chip" id="btn-tab-provincia" type="button" onclick="openProvinciaView(event)"><i class="fa-solid fa-location-dot"></i> Provincia</button>
+                </div>
+            </div>
+
+            <div id="main-tabs" class="mf-chips regions"></div>
+
+            <div id="barra-provincia" class="province-bar" style="display: none;">
+                <label class="mf-label" for="select-provincia">Provincia o città metropolitana (<span id="count-province">…</span> disponibili)</label>
+                <div class="province-row">
+                    <select id="select-provincia" class="mf-select">
+                        <option value="" disabled selected>Scegli dalla lista…</option>
                     </select>
-                </div>
-                <div class="w3-col s4 m6 l8 w3-padding-left">
-                    <button class="w3-button w3-orange w3-text-white" onclick="avviaRicercaProvincia()">Cerca VIP 🔍</button>
+                    <button class="mf-btn mf-btn-primary" type="button" onclick="avviaRicercaProvincia()"><i class="fa-solid fa-magnifying-glass"></i> Cerca VIP</button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="w3-container w3-white w3-padding-24">
-            
-            <h2 class="w3-text-blue" id="titolo-classifica">Seleziona un territorio per iniziare</h2>
-            <p id="classifiche-messaggio">I dati verranno elaborati interrogando Wikidata e Wikipedia IT.</p>
-            
+        <section class="results">
+            <h2 id="titolo-classifica" class="results-title">Seleziona un territorio per iniziare</h2>
+            <p id="classifiche-messaggio" class="muted">I dati vengono calcolati interrogando Wikidata e Wikipedia in italiano; i territori già visti restano in memoria.</p>
+
             <div id="avviso-stato" style="display: none;">
-                <p class="w3-panel w3-pale-yellow w3-border w3-padding" id="testo-avviso">Elaborazione in corso...</p>
+                <div class="mf-alert" id="testo-avviso">Elaborazione in corso…</div>
             </div>
-            
-            <div id="contenitore-tabelle" class="w3-row-padding" style="display: none; margin-top: 20px;">
-                
-                <div class="w3-third w3-margin-bottom">
-                    <div class="w3-card w3-white card-tabella">
-                        <header class="w3-container w3-indigo">
-                            <h4>🌍 Fama Globale</h4><h6 class="w3-margin-0 w3-padding-bottom">Pagine tradotte nel mondo</h6>
-                        </header>
-                        <div class="w3-responsive">
-                            <table class="w3-table-all w3-hoverable">
-                                <thead><tr class="w3-light-grey"><th>Pos</th><th>Nome VIP</th><th>Lingue</th></tr></thead>
-                                <tbody id="tabella-traduzioni-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="w3-third w3-margin-bottom">
-                    <div class="w3-card w3-white card-tabella">
-                        <header class="w3-container w3-teal">
-                            <h4>🔥 Popolarità Attuale</h4><h6 class="w3-margin-0 w3-padding-bottom">Visite IT - Ultimi 365 gg</h6>
-                        </header>
-                        <div class="w3-responsive">
-                            <table class="w3-table-all w3-hoverable">
-                                <thead><tr class="w3-light-grey"><th>Pos</th><th>Nome VIP</th><th>Visite (1 Anno)</th></tr></thead>
-                                <tbody id="tabella-visite-anno-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="w3-third w3-margin-bottom">
-                    <div class="w3-card w3-white card-tabella">
-                        <header class="w3-container w3-deep-orange">
-                            <h4>🏛️ Storico Totale</h4><h6 class="w3-margin-0 w3-padding-bottom">Visite IT dal Luglio 2015</h6>
-                        </header>
-                        <div class="w3-responsive">
-                            <table class="w3-table-all w3-hoverable">
-                                <thead><tr class="w3-light-grey"><th>Pos</th><th>Nome VIP</th><th>Visite Totali</th></tr></thead>
-                                <tbody id="tabella-visite-storiche-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
+            <div id="contenitore-tabelle" class="rank-grid" style="display: none;">
+                <article class="mf-card rank" style="--i:0">
+                    <header><span class="rank-ic"><i class="fa-solid fa-earth-europe"></i></span><div><h3>Fama globale</h3><p>Lingue in cui esiste la pagina Wikipedia</p></div></header>
+                    <table class="mf-table"><tbody id="tabella-traduzioni-body"></tbody></table>
+                </article>
+                <article class="mf-card rank" style="--i:1">
+                    <header><span class="rank-ic"><i class="fa-solid fa-fire"></i></span><div><h3>Popolarità attuale</h3><p>Visite su it.wikipedia negli ultimi 365 giorni</p></div></header>
+                    <table class="mf-table"><tbody id="tabella-visite-anno-body"></tbody></table>
+                </article>
+                <article class="mf-card rank" style="--i:2">
+                    <header><span class="rank-ic"><i class="fa-solid fa-landmark"></i></span><div><h3>Storico totale</h3><p>Visite su it.wikipedia da luglio 2015</p></div></header>
+                    <table class="mf-table"><tbody id="tabella-visite-storiche-body"></tbody></table>
+                </article>
             </div>
-        </div>
-    </div>
-    
-    <script src="js/main.js"> </script>
+        </section>
+    </main>
+
+    <footer class="mf-footer">Dati da <a href="https://www.wikidata.org/" target="_blank" rel="noopener">Wikidata</a> e <a href="https://wikimedia.org/api/rest_v1/" target="_blank" rel="noopener">Wikimedia Pageviews</a> · <a href="https://mattemn97.github.io/">mattemn97.github.io</a></footer>
+
+    <script src="js/main.js"></script>
 </body>
 </html>

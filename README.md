@@ -11,7 +11,7 @@ Una dashboard interattiva, serverless e auto-aggiornante che analizza la popolar
   * 🔥 **Popolarità Attuale:** Visualizzazioni totali su it.wikipedia.org negli ultimi 365 giorni.
   * 🏛️ **Storico Totale:** Visualizzazioni totali dall'inizio del tracciamento ufficiale API di Wikipedia (Luglio 2015 a oggi).
 * **Smart Caching:** I dati scaricati vengono salvati nella memoria del browser. Navigare tra territori già elaborati è istantaneo e non consuma chiamate API.
-* **Design Responsive:** Interfaccia fluida e mobile-friendly basata sul framework W3.CSS.
+* **Design Responsive:** Interfaccia fluida e mobile-friendly con tema chiaro/scuro, nello stesso stile del sito [mattemn97.github.io](https://mattemn97.github.io/).
 
 ## 📂 Struttura del Progetto
 
@@ -21,8 +21,10 @@ Il codice è stato modularizzato per garantire la massima manutenibilità:
 /
 ├── index.html        # Struttura della dashboard e layout principale
 ├── css/
-│   └── style.css     # Regole di stile personalizzate e animazioni
+│   ├── mf-theme.css  # Tema condiviso con il sito personale
+│   └── style.css     # Stili specifici della dashboard
 └── js/
+    ├── mf-theme.js   # Tema chiaro/scuro condiviso
     └── main.js       # Logica applicativa, chiamate API e gestione della UI
 ```
 
@@ -30,7 +32,7 @@ Il codice è stato modularizzato per garantire la massima manutenibilità:
 Il progetto è una Single-Page Application (SPA) puramente Client-Side. Non richiede database o server backend proprietari.
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6+).
-- **Framework UI**: W3.CSS (Ultraleggero e responsive).
+- **Interfaccia**: HTML e CSS puri con il tema condiviso `mf-theme` (nessun framework esterno).
 - **Data Source 1 (Geografia e Biografie)**: Wikidata Query Service (SPARQL).
 - **Data Source 2 (Traffico)**: Wikimedia REST API (Pageviews).
 

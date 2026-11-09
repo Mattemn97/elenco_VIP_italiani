@@ -1,23 +1,43 @@
-
-.loading-spinner { 
-    display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(0,0,0,.3); 
-    border-radius: 50%; border-top-color: #000; animation: spin 1s ease-in-out infinite; 
-    vertical-align: middle; margin-left: 8px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.nav-bar { overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
-.medaglia { font-size: 1.5em; }
-.posizione-normale { font-size: 1.2em; font-weight: bold; color: #555; margin-left: 8px;}
-.card-tabella { height: 100%; }
-
-.tab-provincia { background-color: #ff9800 !important; color: white !important; font-weight: bold; }
-.tab-provincia:hover { background-color: #e68a00 !important; }
+/* VIP italiani per territorio · stili specifici (il resto è in mf-theme.css) */
 
 /* Schermata di caricamento iniziale */
 #boot-screen {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-    background: rgba(255,255,255,0.95); z-index: 9999; 
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; gap: .6rem;
+    justify-content: center; align-items: center; text-align: center; padding: 1rem;
+    background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px);
 }
-.boot-spinner { width: 50px; height: 50px; border: 5px solid #ccc; border-top-color: #2196F3; border-radius: 50%; animation: spin 1s linear infinite; }
+#boot-screen h2 { margin: .8rem 0 0; }
+
+.picker { margin-bottom: 1.6rem; }
+.picker-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .6rem; margin-bottom: .9rem; }
+.picker-head h2 { margin: 0; }
+.regions .mf-chip { font-size: .86rem; }
+.province-bar { margin-top: .4rem; }
+.province-row { display: flex; flex-wrap: wrap; gap: .6rem; }
+.province-row .mf-select { flex: 1 1 260px; width: auto; }
+
+.results-title { font-size: clamp(1.3rem, 3vw, 1.8rem); }
+
+.rank-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; margin-top: 1rem; }
+.rank { padding: 1.1rem; animation: mf-in .45s ease both; animation-delay: calc(var(--i) * 90ms); }
+.rank header { display: flex; gap: .8rem; align-items: center; margin-bottom: .8rem; }
+.rank header h3 { margin: 0; font-size: 1.08rem; }
+.rank header p { margin: 0; font-size: .8rem; color: var(--muted); }
+.rank-ic {
+    display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; flex: none;
+    background: var(--gradient); color: var(--on-primary);
+}
+.rank .mf-table td { vertical-align: middle; border-top: 1px solid var(--border); }
+.rank .mf-table tr:first-child td { border-top: 0; }
+.rank .pos { width: 44px; text-align: center; }
+.medaglia { font-size: 1.45em; }
+.posizione-normale { font-family: var(--font-mono); font-weight: 600; color: var(--muted); }
+.vip-name { font-weight: 600; color: var(--text); }
+.vip-name:hover { color: var(--primary); }
+.val { text-align: right; font-family: var(--font-mono); font-size: .85rem; white-space: nowrap; color: var(--muted); }
+.bar { height: 4px; border-radius: 2px; background: var(--gradient); margin-top: .3rem; transform-origin: left; animation: grow .8s ease both; }
+@keyframes grow { from { transform: scaleX(0); } }
+
+@media (max-width: 960px) {
+    .rank-grid { grid-template-columns: minmax(0, 1fr); }
+}

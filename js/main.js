@@ -9,8 +9,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById('boot-screen').style.display = 'none';
     } catch (error) {
         document.getElementById('boot-screen').innerHTML = `
-            <h2 class="w3-text-red">❌ Errore di Sincronizzazione</h2>
-            <p>Impossibile comunicare con Wikidata. Ricarica la pagina.</p>`;
+            <h2>Errore di sincronizzazione</h2>
+            <p class="muted">Impossibile comunicare con Wikidata. Riprova tra poco.</p>
+            <button class="mf-btn mf-btn-primary" onclick="location.reload()"><i class="fa-solid fa-rotate"></i> Ricarica</button>`;
         console.error(error);
     }
 });
@@ -60,17 +61,15 @@ async function caricaTerritoriDaWikidata() {
 
 function costruisciInterfaccia() {
     const tabBar = document.getElementById("main-tabs");
-    const btnProvincia = document.getElementById("btn-tab-provincia");
-    
+
     regioniDynamic.forEach(regione => {
         const btn = document.createElement("button");
-        btn.className = "w3-bar-item w3-button tab-link";
+        btn.type = "button";
+        btn.className = "mf-chip tab-link";
         btn.innerText = regione.nome;
         btn.onclick = (e) => loadDataView(e, regione.nome, regione.qid, "Regione");
-        tabBar.insertBefore(btn, btnProvincia);
+        tabBar.appendChild(btn);
     });
-
-    btnProvincia.style.display = "block";
 
     const selectProvincia = document.getElementById("select-provincia");
     provinceDynamic.forEach(prov => {
@@ -82,9 +81,23 @@ function costruisciInterfaccia() {
     document.getElementById("count-province").innerText = provinceDynamic.length;
 }
 
+function setMode(mode) {
+    document.getElementById("btn-mode-regione").classList.toggle("active", mode === "Regione");
+    document.getElementById("btn-tab-provincia").classList.toggle("active", mode === "Provincia");
+    document.getElementById("main-tabs").style.display = mode === "Regione" ? "" : "none";
+    document.getElementById("barra-provincia").style.display = mode === "Provincia" ? "block" : "none";
+    document.querySelector(".picker-head h2").innerHTML = mode === "Regione"
+        ? '<i class="fa-solid fa-map"></i> Regioni'
+        : '<i class="fa-solid fa-location-dot"></i> Province';
+}
+
+function openRegioneView() {
+    setMode("Regione");
+}
+
 function openProvinciaView(evt) {
-    document.querySelectorAll(".tab-link").forEach(btn => btn.classList.remove("w3-dark-grey"));
-    document.getElementById("barra-provincia").style.display = "block";
+    document.querySelectorAll(".tab-link").forEach(btn => btn.classList.remove("active"));
+    setMode("Provincia");
     document.getElementById("contenitore-tabelle").style.display = "none";
     document.getElementById("classifiche-messaggio").style.display = "block";
     document.getElementById("titolo-classifica").innerText = "Ricerca VIP per Provincia";
@@ -100,10 +113,10 @@ function avviaRicercaProvincia() {
 }
 
 async function loadDataView(evt, targetName, targetQID, typeLabel) {
-    document.querySelectorAll(".tab-link").forEach(btn => btn.classList.remove("w3-dark-grey"));
-    if (evt && evt.currentTarget) evt.currentTarget.classList.add("w3-dark-grey");
-    
-    if (typeLabel === "Regione") document.getElementById("barra-provincia").style.display = "none";
+    if (typeLabel === "Regione") {
+        document.querySelectorAll(".tab-link").forEach(btn => btn.classList.remove("active"));
+        if (evt && evt.currentTarget) evt.currentTarget.classList.add("active");
+    }
 
     document.getElementById("titolo-classifica").innerText = `Analisi VIP: ${targetName} (${typeLabel})`;
     document.getElementById("classifiche-messaggio").style.display = 'none';
@@ -114,28 +127,28 @@ async function loadDataView(evt, targetName, targetQID, typeLabel) {
     if (datiCache[targetQID]) {
         avvisoStato.style.display = 'none';
         disegnaTabelle(datiCache[targetQID]);
-        contenitoreTabelle.style.display = 'block';
+        contenitoreTabelle.style.display = '';
         return;
     }
 
     contenitoreTabelle.style.display = 'none';
     avvisoStato.style.display = 'block';
-    avvisoStato.firstElementChild.className = "w3-panel w3-pale-yellow w3-border w3-padding";
-    document.getElementById('testo-avviso').innerHTML = `⏳ Estrazione dati per <b>${targetName}</b>... <span class="loading-spinner"></span>`;
+    avvisoStato.firstElementChild.className = "mf-alert warn";
+    document.getElementById('testo-avviso').innerHTML = `<span class="mf-spinner"></span> Estrazione dati per <b>${targetName}</b>… può richiedere qualche secondo.`;
 
     try {
         const datiCalcolati = await eseguiRicercaDati(targetQID);
         datiCache[targetQID] = datiCalcolati;
 
-        avvisoStato.firstElementChild.className = "w3-panel w3-pale-green w3-border w3-padding";
-        document.getElementById('testo-avviso').innerHTML = `✅ Dati elaborati con successo per <b>${targetName}</b>!`;
-        
+        avvisoStato.firstElementChild.className = "mf-alert ok";
+        document.getElementById('testo-avviso').innerHTML = `<i class="fa-solid fa-circle-check"></i> Dati elaborati per <b>${targetName}</b>.`;
+
         disegnaTabelle(datiCalcolati);
-        contenitoreTabelle.style.display = 'block';
+        contenitoreTabelle.style.display = '';
 
     } catch (error) {
-        avvisoStato.firstElementChild.className = "w3-panel w3-pale-red w3-border w3-padding";
-        document.getElementById('testo-avviso').innerHTML = "❌ Errore durante il calcolo. Possibile limite richieste API raggiunto.";
+        avvisoStato.firstElementChild.className = "mf-alert err";
+        document.getElementById('testo-avviso').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Errore durante il calcolo: probabilmente è stato raggiunto il limite di richieste alle API. Riprova tra poco.';
     }
 }
 
@@ -173,7 +186,7 @@ async function eseguiRicercaDati(targetQID) {
     const candidates = (await wdRes.json()).results.bindings;
 
     const topTraduzioni = candidates.slice(0, 5).map(c => ({
-        name: c.personLabel.value, valore: parseInt(c.sitelinks.value)
+        name: c.personLabel.value, url: c.article.value, valore: parseInt(c.sitelinks.value)
     }));
 
     let arrAnno = [], arrStoriche = [];
@@ -185,8 +198,8 @@ async function eseguiRicercaDati(targetQID) {
             getWikipediaViews(wikiTitle, 'daily', d1Year),
             getWikipediaViews(wikiTitle, 'monthly', dAllTime)
         ]);
-        arrAnno.push({ name: c.personLabel.value, valore: vAnno });
-        arrStoriche.push({ name: c.personLabel.value, valore: vStoriche });
+        arrAnno.push({ name: c.personLabel.value, url: c.article.value, valore: vAnno });
+        arrStoriche.push({ name: c.personLabel.value, url: c.article.value, valore: vStoriche });
         await new Promise(r => setTimeout(r, 150)); 
     }
 
@@ -205,14 +218,18 @@ function disegnaTabelle(dati) {
 
 function compilaTabella(bodyId, arrayDati, isTraduzioni) {
     const tbody = document.getElementById(bodyId);
-    tbody.innerHTML = '';
-    arrayDati.forEach((vip, i) => {
-        let pos = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span class="posizione-normale">${i+1}°</span>`;
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const max = Math.max(1, ...arrayDati.map(v => v.valore));
+    tbody.innerHTML = arrayDati.map((vip, i) => {
+        const pos = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span class="posizione-normale">${i + 1}°</span>`;
         const val = isTraduzioni ? `${vip.valore} lingue` : vip.valore.toLocaleString('it-IT');
-        tbody.innerHTML += `<tr>
-            <td style="vertical-align: middle; width: 60px; text-align: center;"><span class="medaglia">${pos}</span></td>
-            <td style="vertical-align: middle;"><strong>${vip.name}</strong></td>
-            <td style="vertical-align: middle;">${val}</td>
+        const nome = vip.url
+            ? `<a class="vip-name" href="${esc(vip.url)}" target="_blank" rel="noopener">${esc(vip.name)}</a>`
+            : `<span class="vip-name">${esc(vip.name)}</span>`;
+        return `<tr>
+            <td class="pos"><span class="medaglia">${pos}</span></td>
+            <td>${nome}<div class="bar" style="width:${Math.round(vip.valore / max * 100)}%"></div></td>
+            <td class="val">${val}</td>
         </tr>`;
-    });
+    }).join('');
 }
