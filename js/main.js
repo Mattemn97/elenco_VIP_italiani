@@ -1,18 +1,42 @@
 let regioniDynamic = [];
 let provinceDynamic = [];
 const datiCache = {};
+let ricercaCorrente = 0; // per ignorare i risultati di ricerche superate da un clic più recente
+
+// logger condiviso (js/mf-log.js); se manca, i log vengono ignorati
+const noop = () => {};
+const log = window.MFLog || { debug: noop, info: noop, warn: noop, error: noop, time: () => noop };
+
+// fetch + JSON con controllo dello stato: Wikidata in caso di limite o timeout risponde con HTML
+async function fetchJson(url, area, cosa) {
+    const res = await fetch(url);
+    if (!res.ok) {
+        const retry = res.headers.get('retry-after');
+        throw new Error(`${cosa}: HTTP ${res.status}` +
+            (res.status === 429 ? ` (troppe richieste${retry ? ', riprova tra ' + retry + ' s' : ''})` : '') +
+            (res.status === 500 || res.status === 504 ? ' (query troppo pesante, timeout di Wikidata)' : ''));
+    }
+    try {
+        return await res.json();
+    } catch (e) {
+        throw new Error(`${cosa}: risposta non in formato JSON (${e.message})`);
+    }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
+    const endBoot = log.time('avvio', 'Sincronizzazione territori con Wikidata');
     try {
         await caricaTerritoriDaWikidata();
         costruisciInterfaccia();
+        endBoot({ regioni: regioniDynamic.length, province: provinceDynamic.length });
+        if (regioniDynamic.length !== 20) log.warn('avvio', `Attese 20 regioni, ricevute ${regioniDynamic.length}: controlla la query`);
         document.getElementById('boot-screen').style.display = 'none';
     } catch (error) {
+        log.error('avvio', 'Territori non caricati, l\'app resta sulla schermata iniziale: ' + error.message, error.stack);
         document.getElementById('boot-screen').innerHTML = `
             <h2>Errore di sincronizzazione</h2>
             <p class="muted">Impossibile comunicare con Wikidata. Riprova tra poco.</p>
             <button class="mf-btn mf-btn-primary" onclick="location.reload()"><i class="fa-solid fa-rotate"></i> Ricarica</button>`;
-        console.error(error);
     }
 });
 
@@ -32,13 +56,10 @@ async function caricaTerritoriDaWikidata() {
             SERVICE wikibase:label { bd:serviceParam wikibase:language "it". }
         }`;
 
-    const [resRegioni, resProvince] = await Promise.all([
-        fetch(`https://query.wikidata.org/sparql?query=${encodeURIComponent(queryRegioni)}&format=json`),
-        fetch(`https://query.wikidata.org/sparql?query=${encodeURIComponent(queryProvince)}&format=json`)
+    const [dataRegioni, dataProvince] = await Promise.all([
+        fetchJson(`https://query.wikidata.org/sparql?query=${encodeURIComponent(queryRegioni)}&format=json`, 'avvio', 'Elenco regioni'),
+        fetchJson(`https://query.wikidata.org/sparql?query=${encodeURIComponent(queryProvince)}&format=json`, 'avvio', 'Elenco province')
     ]);
-
-    const dataRegioni = await resRegioni.json();
-    const dataProvince = await resProvince.json();
 
     regioniDynamic = dataRegioni.results.bindings.map(b => {
         let nomePulito = b.itemLabel.value
@@ -106,7 +127,7 @@ function openProvinciaView(evt) {
 
 function avviaRicercaProvincia() {
     const select = document.getElementById("select-provincia");
-    if (!select.value) return; 
+    if (!select.value) { log.debug('ricerca', 'Cerca VIP premuto senza scegliere una provincia'); return; }
     const nomeProvincia = select.options[select.selectedIndex].text;
     const qidProvincia = select.value;
     loadDataView({currentTarget: document.getElementById("btn-tab-provincia")}, nomeProvincia, qidProvincia, "Provincia");
@@ -124,7 +145,9 @@ async function loadDataView(evt, targetName, targetQID, typeLabel) {
     const avvisoStato = document.getElementById('avviso-stato');
     const contenitoreTabelle = document.getElementById('contenitore-tabelle');
 
+    const mio = ++ricercaCorrente;
     if (datiCache[targetQID]) {
+        log.info('ricerca', `${targetName} (${targetQID}) già in memoria, nessuna richiesta`);
         avvisoStato.style.display = 'none';
         disegnaTabelle(datiCache[targetQID]);
         contenitoreTabelle.style.display = '';
@@ -136,9 +159,17 @@ async function loadDataView(evt, targetName, targetQID, typeLabel) {
     avvisoStato.firstElementChild.className = "mf-alert warn";
     document.getElementById('testo-avviso').innerHTML = `<span class="mf-spinner"></span> Estrazione dati per <b>${targetName}</b>… può richiedere qualche secondo.`;
 
+    log.info('ricerca', `Avvio analisi di ${targetName} (${typeLabel}, ${targetQID})`);
+    const endRicerca = log.time('ricerca', `Analisi ${targetName}`);
     try {
         const datiCalcolati = await eseguiRicercaDati(targetQID);
         datiCache[targetQID] = datiCalcolati;
+        endRicerca({ topLingue: datiCalcolati.traduzioni.map(v => v.name) });
+        if (mio !== ricercaCorrente) {
+            // l'utente ha già cliccato un altro territorio: non sovrascrivere la vista
+            log.info('ricerca', `Risultati di ${targetName} arrivati ma superati da un'altra ricerca: salvati in memoria, non mostrati`);
+            return;
+        }
 
         avvisoStato.firstElementChild.className = "mf-alert ok";
         document.getElementById('testo-avviso').innerHTML = `<i class="fa-solid fa-circle-check"></i> Dati elaborati per <b>${targetName}</b>.`;
@@ -147,6 +178,8 @@ async function loadDataView(evt, targetName, targetQID, typeLabel) {
         contenitoreTabelle.style.display = '';
 
     } catch (error) {
+        log.error('ricerca', `Analisi di ${targetName} fallita: ${error.message}`, error.stack);
+        if (mio !== ricercaCorrente) return;
         avvisoStato.firstElementChild.className = "mf-alert err";
         document.getElementById('testo-avviso').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Errore durante il calcolo: probabilmente è stato raggiunto il limite di richieste alle API. Riprova tra poco.';
     }
@@ -166,10 +199,17 @@ function getMonthlyDatesAllTime() {
 async function getWikipediaViews(wikiTitle, granularity, dates) {
     try {
         const res = await fetch(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/it.wikipedia.org/all-access/user/${encodeURIComponent(wikiTitle)}/${granularity}/${dates.start}/${dates.end}`);
-        if (!res.ok) return 0;
+        if (!res.ok) {
+            // 404 = pagina senza statistiche nel periodo; 429 = troppe richieste
+            log.warn('visite', `"${wikiTitle}" (${granularity}): HTTP ${res.status}, conto 0 visite`);
+            return 0;
+        }
         const data = await res.json();
         return data.items.reduce((sum, item) => sum + item.views, 0);
-    } catch (e) { return 0; }
+    } catch (e) {
+        log.warn('visite', `"${wikiTitle}" (${granularity}): ${e.message}, conto 0 visite`);
+        return 0;
+    }
 }
 
 async function eseguiRicercaDati(targetQID) {
@@ -182,8 +222,12 @@ async function eseguiRicercaDati(targetQID) {
             SERVICE wikibase:label { bd:serviceParam wikibase:language "it". }
         } ORDER BY DESC(?sitelinks) LIMIT 15`;
 
-    const wdRes = await fetch(`https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`);
-    const candidates = (await wdRes.json()).results.bindings;
+    // la query più lenta: per le regioni grandi Wikidata può impiegare decine di secondi
+    const endSparql = log.time('ricerca', `Query SPARQL persone nate in ${targetQID}`);
+    const candidates = (await fetchJson(`https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`, 'ricerca', 'Query VIP')).results.bindings;
+    endSparql({ candidati: candidates.length });
+    if (!candidates.length) log.warn('ricerca', `Nessuna persona trovata per ${targetQID}`);
+    const endViews = log.time('visite', `Visite Wikipedia di ${candidates.length} persone (${candidates.length * 2} richieste)`);
 
     const topTraduzioni = candidates.slice(0, 5).map(c => ({
         name: c.personLabel.value, url: c.article.value, valore: parseInt(c.sitelinks.value)
@@ -192,16 +236,18 @@ async function eseguiRicercaDati(targetQID) {
     let arrAnno = [], arrStoriche = [];
     const d1Year = getDailyDates1Year(), dAllTime = getMonthlyDatesAllTime();
 
-    for (let c of candidates) {
+    for (const [i, c] of candidates.entries()) {
         const wikiTitle = decodeURIComponent(c.article.value.split('/wiki/')[1]);
         const [vAnno, vStoriche] = await Promise.all([
             getWikipediaViews(wikiTitle, 'daily', d1Year),
             getWikipediaViews(wikiTitle, 'monthly', dAllTime)
         ]);
+        log.debug('visite', `${i + 1}/${candidates.length} ${c.personLabel.value}: ${vAnno} nell'ultimo anno, ${vStoriche} dal 2015`);
         arrAnno.push({ name: c.personLabel.value, url: c.article.value, valore: vAnno });
         arrStoriche.push({ name: c.personLabel.value, url: c.article.value, valore: vStoriche });
-        await new Promise(r => setTimeout(r, 150)); 
+        await new Promise(r => setTimeout(r, 150));
     }
+    endViews();
 
     return { 
         traduzioni: topTraduzioni, 
